@@ -11,21 +11,17 @@ const SYSTEM_PROMPT = `You are an engineering consultant. The user describes a t
 Use this exact schema:
 {
   "proje_ozeti": "2-3 sentence summary in Turkish",
-  "teknik_parametreler": [
-    {"etiket": "Voltaj", "deger": "12V"},
-    {"etiket": "Kapasite", "deger": "40Ah"}
-  ],
-  "bilesenler": [
-    {"kategori": "Enerji Depolama", "ad": "LFP hucre", "aciklama": "Lifepo4 18650 hucre", "adet": "1 paket"},
-    {"kategori": "BMS", "ad": "BMS karti", "aciklama": "Dengeli sarj korumasi", "adet": "1 adet"}
-  ],
-  "dikkat_notlari": [
-    "Motor akim degerleri belirtilmemis",
-    "Ortam nem korumasÄ± seviyesi netlestirilmeli"
-  ]
+  "teknik_parametreler": [{"etiket": "string", "deger": "string"}],
+  "bilesenler": [{"kategori": "string", "ad": "string", "aciklama": "string", "adet": "string"}],
+  "dikkat_notlari": ["string"]
 }
 
-IMPORTANT: Keep every string value under 60 characters. No line breaks inside strings.`;
+Rules:
+- teknik_parametreler: list concrete values found in description (voltage, capacity, temperature range, etc)
+- bilesenler: exactly 8 items across categories like: Enerji Depolama, BMS, Guc Donusturme, Anahtarlama, Algilama, Kontrol, Konektor, Muhafaza
+- dikkat_notlari: 2-3 items, each a short sentence about unclear or safety-critical points
+- Every string value must be under 80 characters, no newlines inside strings
+- Return valid JSON only, nothing else`;
 
 app.post('/api/generate-project', async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -38,7 +34,6 @@ app.post('/api/generate-project', async (req, res) => {
     return res.status(500).json({ error: 'API anahtari eksik.' });
   }
 
-  let raw = '';
   try {
     const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -51,10 +46,7 @@ app.post('/api/generate-project', async (req, res) => {
         model: 'claude-sonnet-5',
         max_tokens: 4000,
         system: SYSTEM_PROMPT,
-        messages: [
-          { role: 'user', content: description },
-          { role: 'assistant', content: '{' }
-        ]
+        messages: [{ role: 'user', content: description }]
       })
     });
 
@@ -71,15 +63,17 @@ app.post('/api/generate-project', async (req, res) => {
       return res.status(502).json({ error: 'Model bos yanit dondurmedi.' });
     }
 
-    raw = '{' + textBlock.text.trim();
-    console.log('Ham yanit ilk 400:', raw.substring(0, 400));
+    const raw = textBlock.text.trim();
+    console.log('Ham yanit ilk 300:', raw.substring(0, 300));
 
+    const start = raw.indexOf('{');
     const end = raw.lastIndexOf('}');
-    if (end === -1) {
-      return res.status(502).json({ error: 'JSON kapanmadi. Yanit: ' + raw.substring(0, 100) });
+
+    if (start === -1 || end === -1 || end <= start) {
+      return res.status(502).json({ error: 'Model JSON dondurmedi. Yanit: ' + raw.substring(0, 150) });
     }
 
-    const jsonStr = raw.slice(0, end + 1);
+    const jsonStr = raw.slice(start, end + 1);
 
     let parsed;
     try {
@@ -88,7 +82,7 @@ app.post('/api/generate-project', async (req, res) => {
       const pos = parseInt((e.message.match(/position (\d+)/) || [])[1]) || 0;
       const around = jsonStr.substring(Math.max(0, pos - 40), pos + 40);
       console.error('Parse hatasi @ pos', pos, '| kisim:', around);
-      return res.status(502).json({ error: 'JSON hatasi @ ' + pos + ': ' + around });
+      return res.status(502).json({ error: 'JSON hatasi @ ' + pos + ' | kisim: ' + around });
     }
 
     return res.json(parsed);
