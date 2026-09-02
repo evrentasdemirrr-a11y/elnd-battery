@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ELND BATTERY — Proje Taslak Aracı</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg-dark: #12161D;
+    --panel-dark: #1A2029;
+    --paper: #EEEAE0;
+    --paper-line: #D9D3C4;
+    --ink: #1E2430;
+    --copper: #C17A4E;
+    --copper-bright: #E0975E;
+    --measure-blue: #6F97AE;
+    --text-light: #E7E5DE;
+    --text-muted: #8B93A1;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-light);
+  }
+  h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 22px 6vw; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  nav .brand { font-weight: 600; font-size: 16px; letter-spacing: 0.01em; }
+  nav a {
+    color: var(--text-muted); text-decoration: none; font-size: 14px;
+  }
+
+  .hero {
+    padding: 100px 6vw 90px; max-width: 720px;
+  }
+  .hero .kicker { color: var(--copper-bright); font-size: 13px; margin-bottom: 14px; }
+  .hero h1 { font-size: clamp(32px, 4.5vw, 48px); line-height: 1.15; font-weight: 600; color: var(--text-light); }
+  .hero p { font-size: 16px; line-height: 1.7; color: var(--text-muted); max-width: 46ch; margin-top: 18px; }
+  .hero .cta {
+    display: inline-block; margin-top: 30px; background: var(--copper); color: var(--bg-dark);
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px;
+    padding: 13px 24px; border-radius: 3px; text-decoration: none; cursor: pointer; border: none;
+  }
+
+  .steps {
+    padding: 70px 6vw; border-top: 1px solid rgba(255,255,255,0.06);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 36px;
+  }
+  .step .num { font-family: 'IBM Plex Mono', monospace; color: var(--copper-bright); font-size: 13px; }
+  .step h3 { font-size: 18px; margin: 10px 0 8px; color: var(--text-light); }
+  .step p { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin: 0; }
+
+  .tool {
+    display: flex; flex-wrap: wrap; border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .tool-left, .tool-right { width: 100%; }
+  @media (min-width: 860px) {
+    .tool-left { width: 42%; }
+    .tool-right { width: 58%; }
+  }
+  .tool-left { padding: 48px 6vw; border-right: 1px solid rgba(255,255,255,0.06); }
+  .tool-left h2 { font-size: 24px; margin-bottom: 8px; }
+  .tool-left > p { color: var(--text-muted); font-size: 14px; line-height: 1.6; max-width: 34ch; margin: 0 0 24px; }
+  label { display: block; font-size: 13px; color: #C7CBD4; margin-bottom: 8px; }
+  textarea {
+    width: 100%; background: var(--panel-dark); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px; color: var(--text-light); font-size: 14px; line-height: 1.6;
+    padding: 14px; font-family: inherit; resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--copper); }
+  textarea::placeholder { color: #5C6472; }
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .btn-primary {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px; color: var(--bg-dark);
+    background: var(--copper); border: none; border-radius: 3px; padding: 11px 20px; cursor: pointer;
+  }
+  .btn-primary:disabled { background: #6B5541; cursor: default; }
+  .btn-secondary {
+    font-size: 13px; color: var(--text-muted); background: transparent;
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 3px; padding: 10px 16px; cursor: pointer;
+  }
+  .error-msg { color: #D98E6C; font-size: 13px; margin-top: 14px; }
+
+  .tool-right { background: var(--paper); color: var(--ink); padding: 48px 6vw; position: relative; min-height: 560px; }
+  .empty-state { height: 100%; min-height: 460px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .empty-state p { color: #7A7566; font-size: 14px; max-width: 30ch; }
+
+  .scan {
+    position: absolute; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--copper-bright), transparent);
+    animation: sweep 1.6s ease-in-out infinite;
+  }
+  @keyframes sweep { 0% { top: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+
+  .sheet { max-width: 640px; }
+  .sheet-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 20px;
+  }
+  .sheet-header h2 { font-size: 20px; color: var(--ink); }
+  .sheet-header span { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8570; }
+  .sheet-summary { font-size: 14.5px; line-height: 1.7; color: #2A3040; margin: 0 0 24px; }
+  .sheet-section { margin-bottom: 26px; }
+  .sheet-section h3 {
+    font-size: 13px; font-weight: 600; color: var(--ink);
+    border-bottom: 1px solid var(--paper-line); padding-bottom: 6px; margin-bottom: 10px;
+  }
+  .param-row {
+    display: flex; justify-content: space-between; padding: 5px 0;
+    border-bottom: 1px solid #E3DFD3; font-size: 13.5px;
+  }
+  .param-row .label { color: #5C5848; }
+  .param-row .value { font-family: 'IBM Plex Mono', monospace; color: var(--ink); }
+  .category-label { font-size: 12px; font-weight: 600; color: var(--measure-blue); margin: 14px 0 6px; }
+  .comp-row { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #E3DFD3; }
+  .comp-row .name { font-size: 13.5px; color: var(--ink); font-weight: 500; }
+  .comp-row .desc { font-size: 12.5px; color: #7A7566; }
+  .comp-row .qty { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #5C5848; white-space: nowrap; }
+  .notes-block { border-left: 3px solid var(--copper); padding-left: 14px; margin-bottom: 20px; }
+  .notes-block h3 { color: #8A4E23; font-size: 13px; margin-bottom: 8px; }
+  .notes-block ul { margin: 0; padding-left: 16px; font-size: 13px; color: #4A4636; line-height: 1.7; }
+  .disclaimer { font-size: 11.5px; color: #9B9684; border-top: 1px solid var(--paper-line); padding-top: 12px; }
+  .raw-toggle { margin-top: 16px; font-size: 12px; color: #7A7566; background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; }
+  pre.raw {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; background: var(--ink); color: #C7CBD4;
+    padding: 14px; border-radius: 3px; overflow-x: auto; margin-top: 10px;
+  }
+
+  footer {
+    padding: 40px 6vw; border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    font-size: 13px; color: var(--text-muted);
+  }
+
+  .contact-block {
+    background: #F0EBE0;
+    border: 1px solid #D9D3C4;
+    border-radius: 4px;
+    padding: 24px;
+    margin: 24px 0;
+  }
+  .contact-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1E2430;
+    margin-bottom: 6px;
+  }
+  .contact-desc {
+    font-size: 13px;
+    color: #7A7566;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .contact-fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+  .field-group { display: flex; flex-direction: column; gap: 4px; }
+  .field-label { font-size: 12px; color: #5C5848; font-weight: 500; }
+  .field-input {
+    background: #FDFAF4;
+    border: 1px solid #D9D3C4;
+    border-radius: 3px;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #1E2430;
+    outline: none;
+  }
+  .field-input:focus { border-color: #C17A4E; }
+  .contact-btn {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: #EEEAE0;
+    background: #1E2430;
+    border: none;
+    border-radius: 3px;
+    padding: 11px 22px;
+    cursor: pointer;
+    width: 100%;
+  }
+  .contact-btn:disabled { opacity: 0.5; cursor: default; }
+  .contact-error { font-size: 13px; color: #C17A4E; margin-bottom: 12px; }
+  .contact-success {
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: #E8F0EC;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #2E5B45;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">ELND BATTERY</div>
+  <a href="#taslak-araci">Taslak aracı</a>
+</nav>
+
+<section class="hero grid-bg">
+  <div class="kicker">Özel mühendislik projeleri</div>
+  <h1>Açıklamayı yaz, taslağı biz çizelim.</h1>
+  <p>Müşterinizin yazdığı proje açıklamasını okur; teknik parametreleri ve gerekli bileşen listesini çıkarır. Siz sadece gözden geçirip onaylarsınız.</p>
+  <a href="#taslak-araci" class="cta">Taslak oluşturmayı dene</a>
+</section>
+
+<section class="steps grid-bg">
+  <div class="step">
+    <div class="num">01</div>
+    <h3>Müşteri anlatır</h3>
+    <p>Proje ihtiyacını kendi cümleleriyle, serbest metin olarak yazar.</p>
+  </div>
+  <div class="step">
+    <div class="num">02</div>
+    <h3>Sistem taslağı çıkarır</h3>
+    <p>Teknik parametreler ve kategorilere ayrılmış bileşen listesi otomatik oluşturulur.</p>
+  </div>
+  <div class="step">
+    <div class="num">03</div>
+    <h3>Mühendis onaylar</h3>
+    <p>Taslak size ulaşır; siz onayladıktan sonra müşteriye nihai teklif olarak gider.</p>
+  </div>
+</section>
+
+<section class="tool" id="taslak-araci">
+  <div class="tool-left grid-bg">
+    <h2>Projeni anlat</h2>
+    <p>Aşağıya proje açıklamasını yaz, taslağın nasıl çıktığını gör.</p>
+    <label for="desc">Proje açıklaması</label>
+    <textarea id="desc" rows="8" placeholder="Örn: 12V, 24V ve 36V çıkışlı, 3 motoru otomatik besleyen bir batarya sistemi istiyorum..."></textarea>
+    <div class="btn-row">
+      <button class="btn-primary" id="generate-btn">Taslak oluştur</button>
+      <button class="btn-secondary" id="example-btn">Örnek doldur</button>
+    </div>
+    <div class="error-msg" id="error-msg" style="display:none;"></div>
+  </div>
+
+  <div class="tool-right" id="tool-right">
+    <div class="empty-state" id="empty-state">
+      <svg width="72" height="72" viewBox="0 0 72 72" style="opacity:0.35; margin-bottom:18px;">
+        <circle cx="36" cy="36" r="24" fill="none" stroke="#1E2430" stroke-width="1"/>
+        <line x1="36" y1="6" x2="36" y2="66" stroke="#1E2430" stroke-width="1"/>
+        <line x1="6" y1="36" x2="66" y2="36" stroke="#1E2430" stroke-width="1"/>
+      </svg>
+      <p>İncelemeye hazır bir proje taslağı burada görünecek.</p>
+    </div>
+    <div id="scan-line" class="scan" style="display:none;"></div>
+    <div class="sheet" id="sheet" style="display:none;"></div>
+  </div>
+</section>
+
+<footer>
+  <div>ELND BATTERY · [email protected] · İstanbul</div>
+  <div>Bu site bir başlangıç şablonudur — marka bilgilerini kendinize göre güncelleyin.</div>
+</footer>
+
+<script>
+const EXAMPLE = "Askeri tatbikatta kullanılacak, 3 farklı motoru (12V, 24V, 36V) otomatik olarak besleyen, 18Ah toplam kapasiteli lityum batarya paketi istiyorum. Motorlar bazen aynı anda çalışabiliyor. Hata payı olmamalı, saha koşullarında (toz, nem, titreşim) çalışacak.";
+
+document.getElementById('example-btn').addEventListener('click', () => {
+  document.getElementById('desc').value = EXAMPLE;
+});
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderSheet(data) {
+  let html = `
+    <div class="sheet-header">
+      <h2>Proje Taslağı</h2>
+      <span>AI taslağı — onay bekliyor</span>
+    </div>
+    <p class="sheet-summary">${escapeHtml(data.proje_ozeti || '')}</p>
+  `;
+
+  if (data.teknik_parametreler && data.teknik_parametreler.length) {
+    html += `<div class="sheet-section"><h3>Teknik Parametreler</h3>`;
+    data.teknik_parametreler.forEach(p => {
+      html += `<div class="param-row"><span class="label">${escapeHtml(p.etiket)}</span><span class="value">${escapeHtml(p.deger)}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="contact-block">
+    <div class="contact-title">Detaylı teklif almak için iletişime geçin</div>
+    <div class="contact-desc">Projeniz için gerekli bileşen listesi ve fiyat teklifini size özel hazırlayıp iletelim.</div>
+    <div class="contact-fields">
+      <div class="field-group">
+        <label class="field-label" for="c-ad">Ad Soyad</label>
+        <input class="field-input" id="c-ad" type="text" placeholder="Adınız Soyadınız" />
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="c-email">E-posta</label>
+        <input class="field-input" id="c-email" type="email" placeholder="ornek@email.com" />
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="c-tel">Telefon</label>
+        <input class="field-input" id="c-tel" type="tel" placeholder="+90 5xx xxx xx xx" />
+      </div>
+    </div>
+    <div id="contact-error" class="contact-error" style="display:none;"></div>
+    <button class="contact-btn" id="contact-btn" onclick="handleContact()">Teklif talep et</button>
+    <div id="contact-success" class="contact-success" style="display:none;">Talebiniz alındı. En kısa sürede size ulaşacağız.</div>
+  </div>`;
+
+  _lastProjectData = data;
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = html;
+  sheet.style.display = 'block';
+  document.getElementById('empty-state').style.display = 'none';
+}
+
+async function handleGenerate() {
+  const desc = document.getElementById('desc').value.trim();
+  const errorEl = document.getElementById('error-msg');
+  const btn = document.getElementById('generate-btn');
+  const sheet = document.getElementById('sheet');
+  const emptyState = document.getElementById('empty-state');
+  const scanLine = document.getElementById('scan-line');
+
+  errorEl.style.display = 'none';
+  if (!desc) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Taslak çiziliyor...';
+  scanLine.style.display = 'block';
+  sheet.style.display = 'none';
+  emptyState.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/generate-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: desc })
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (jsonErr) {
+      throw new Error('Sunucudan geçersiz yanıt geldi.');
+    }
+
+    if (!res.ok || data.error) throw new Error(data.error || 'Bilinmeyen hata');
+
+    renderSheet(data);
+
+  } catch (e) {
+    emptyState.style.display = 'none';
+    sheet.innerHTML = '<div style="padding:32px 0; color:#8A4E23;">' +
+      '<div style="font-size:16px; font-weight:600; margin-bottom:12px;">Taslak oluşturulamadı</div>' +
+      '<div style="font-size:13px; color:#5C5848; line-height:1.7;">' + escapeHtml(e.message) + '</div>' +
+      '<div style="font-size:12px; color:#9B9684; margin-top:16px;">Açıklamayı kısaltıp tekrar deneyin veya sayfayı yenileyip baştan başlayın.</div>' +
+      '</div>';
+    sheet.style.display = 'block';
+    errorEl.style.display = 'none';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Taslak oluştur';
+    scanLine.style.display = 'none';
+  }
+}
+
+
+let _lastProjectData = null;
+
+async function handleContact() {
+  const ad = document.getElementById('c-ad').value.trim();
+  const email = document.getElementById('c-email').value.trim();
+  const tel = document.getElementById('c-tel').value.trim();
+  const errorEl = document.getElementById('contact-error');
+  const btn = document.getElementById('contact-btn');
+  const successEl = document.getElementById('contact-success');
+
+  errorEl.style.display = 'none';
+  successEl.style.display = 'none';
+
+  if (!ad || !email || !tel) {
+    errorEl.textContent = 'Lütfen tüm alanları doldurun.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (!email.includes('@')) {
+    errorEl.textContent = 'Geçerli bir e-posta adresi girin.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Gönderiliyor...';
+
+  try {
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ad, email, telefon: tel,
+        proje_ozeti: _lastProjectData && _lastProjectData.proje_ozeti,
+        teknik_parametreler: _lastProjectData && _lastProjectData.teknik_parametreler
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Gönderilemedi.');
+    successEl.style.display = 'block';
+    btn.style.display = 'none';
+  } catch (e) {
+    errorEl.textContent = e.message;
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Teklif talep et';
+  }
+}
+
+document.getElementById('generate-btn').addEventListener('click', handleGenerate);
+</script>
+
+</body>
+</html>
