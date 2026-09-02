@@ -2,9 +2,33 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 
+const fs = require('fs');
+
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+const PUBLIC_DIR = path.join(__dirname, 'public');
+app.use(express.static(PUBLIC_DIR));
+
+app.get('/', (req, res) => {
+  const indexPath = path.join(PUBLIC_DIR, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  let listing = '';
+  try {
+    listing = 'Kok dizin: ' + fs.readdirSync(__dirname).join(', ');
+    if (fs.existsSync(PUBLIC_DIR)) {
+      listing += ' | public icerigi: ' + fs.readdirSync(PUBLIC_DIR).join(', ');
+    } else {
+      listing += ' | public klasoru YOK';
+    }
+  } catch (e) {
+    listing = 'Dizin okunamadi: ' + e.message;
+  }
+  console.log('TESHIS:', listing);
+  res.status(404).send('<pre style="font-family:monospace;padding:20px;">index.html bulunamadi.\n\n' + listing + '</pre>');
+});
 
 const SYSTEM_PROMPT = `You are an engineering consultant. The user describes a technical project in Turkish. Respond with ONLY a JSON object. No text before or after. No markdown. No code fences. Response must start with { and end with }.
 
