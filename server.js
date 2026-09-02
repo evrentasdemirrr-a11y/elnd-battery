@@ -102,7 +102,7 @@ app.post('/api/generate-project', async (req, res) => {
 // --- Iletisim formu + e-posta ---
 app.post('/api/contact', async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  const { ad, email, telefon, proje_ozeti, teknik_parametreler } = req.body || {};
+  const { ad, email, telefon, proje_ozeti, teknik_parametreler, bilesenler, aciklama } = req.body || {};
 
   if (!ad || !email || !telefon) {
     return res.status(400).json({ error: 'Ad, e-posta ve telefon zorunludur.' });
@@ -115,6 +115,28 @@ app.post('/api/contact', async (req, res) => {
   const params = Array.isArray(teknik_parametreler)
     ? teknik_parametreler.map(p => `<tr><td style="padding:4px 12px 4px 0;color:#5C5848;">${p.etiket}</td><td style="padding:4px 0;font-weight:600;">${p.deger}</td></tr>`).join('')
     : '';
+
+  let comps = '';
+  if (Array.isArray(bilesenler) && bilesenler.length) {
+    const byCat = {};
+    bilesenler.forEach(b => {
+      const k = b.kategori || 'Diger';
+      (byCat[k] = byCat[k] || []).push(b);
+    });
+    comps = Object.entries(byCat).map(([kat, items]) => {
+      const rows = items.map(it =>
+        `<tr>
+          <td style="padding:6px 12px 6px 0;border-bottom:1px solid #E3DFD3;">
+            <div style="font-weight:600;font-size:13px;">${it.ad || ''}</div>
+            <div style="font-size:12px;color:#7A7566;">${it.aciklama || ''}</div>
+          </td>
+          <td style="padding:6px 0;border-bottom:1px solid #E3DFD3;font-size:12px;color:#5C5848;white-space:nowrap;vertical-align:top;">${it.adet || ''}</td>
+        </tr>`
+      ).join('');
+      return `<div style="font-size:12px;font-weight:600;color:#6F97AE;margin:14px 0 4px;">${kat}</div>
+        <table style="width:100%;border-collapse:collapse;">${rows}</table>`;
+    }).join('');
+  }
 
   const html = `
 <div style="font-family:sans-serif;max-width:600px;color:#1E2430;">
@@ -129,12 +151,27 @@ app.post('/api/contact', async (req, res) => {
       <tr><td style="padding:4px 12px 4px 0;color:#5C5848;">Telefon</td><td><a href="tel:${telefon}">${telefon}</a></td></tr>
     </table>
     ${proje_ozeti ? `<div style="background:#F5F2EA;padding:16px;border-radius:4px;margin-bottom:20px;font-size:14px;line-height:1.6;">${proje_ozeti}</div>` : ''}
-    ${params ? `<table style="width:100%;font-size:13px;">${params}</table>` : ''}
+    ${aciklama ? `<div style="margin-bottom:20px;"><div style="font-size:12px;font-weight:600;color:#5C5848;margin-bottom:6px;">Musterinin yazdigi aciklama</div><div style="background:#FDFAF4;border:1px solid #E3DFD3;padding:12px;border-radius:3px;font-size:13px;line-height:1.6;">${aciklama}</div></div>` : ''}
+    ${params ? `<div style="font-size:12px;font-weight:600;color:#5C5848;margin-bottom:6px;">Teknik parametreler</div><table style="width:100%;font-size:13px;margin-bottom:20px;">${params}</table>` : ''}
+    ${comps ? `<div style="border-top:2px solid #1E2430;padding-top:16px;margin-top:20px;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Bilesen listesi</div>
+      <div style="font-size:12px;color:#C17A4E;margin-bottom:8px;">Sadece dahili kullanim. Musteriye gosterilmedi.</div>
+      ${comps}
+    </div>` : ''}
     <div style="margin-top:24px;padding-top:16px;border-top:1px solid #E3DFD3;font-size:12px;color:#9B9684;">
       ELND BATTERY otomatik bildirim sistemi
     </div>
   </div>
 </div>`;
+
+  const toAddress = String(process.env.CONTACT_EMAIL || '')
+    .replace(/["']/g, '')
+    .trim();
+
+  if (!toAddress || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(toAddress)) {
+    console.error('CONTACT_EMAIL gecersiz:', JSON.stringify(process.env.CONTACT_EMAIL));
+    return res.status(500).json({ error: 'Alici e-posta adresi hatali yapilandirilmis: ' + JSON.stringify(process.env.CONTACT_EMAIL) });
+  }
 
   try {
     const mailRes = await fetch('https://api.resend.com/emails', {
@@ -145,7 +182,7 @@ app.post('/api/contact', async (req, res) => {
       },
       body: JSON.stringify({
         from: 'ELND BATTERY <onboarding@resend.dev>',
-        to: [process.env.CONTACT_EMAIL || 'info@elndbattery.com'],
+        to: [toAddress],
         subject: 'Yeni teklif talebi â€” ' + ad,
         html
       })
@@ -157,7 +194,8 @@ app.post('/api/contact', async (req, res) => {
       return res.status(502).json({ error: 'Mail gonderilemedi: ' + (mailData.message || JSON.stringify(mailData)) });
     }
 
-    return res.json({ ok: true });
+    console.log('Resend kabul etti | alici:', toAddress, '| id:', mailData.id || JSON.stringify(mailData));
+    return res.json({ ok: true, id: mailData.id });
   } catch (err) {
     return res.status(500).json({ error: 'Mail hatasi: ' + err.message });
   }
